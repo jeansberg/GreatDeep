@@ -8,6 +8,8 @@ function love.load()
   canFire = false
   torpedoTimerMax = 0.2
   torpedoTimer = torpedoTimerMax
+  torpedoStartSpeed = 100
+  torpedoMaxSpeed = 300
 end
 
 function love.draw()
@@ -19,11 +21,13 @@ function love.draw()
 end
 
 function love.update(dt)
-  downUp = love.keyboard.isDown("down") or love.keyboard.isDown("up")
-  leftRight = love.keyboard.isDown("left") or love.keyboard.isDown("right")
+  down = love.keyboard.isDown("down")
+  up = love.keyboard.isDown("up")
+  left = love.keyboard.isDown("left")
+  right = love.keyboard.isDown("right")
 
   speed = player.speed
-  if(downUp and leftRight) then
+  if((down or up) and (left or right)) then
     speed = speed / math.sqrt(2)
   end
 
@@ -40,21 +44,34 @@ function love.update(dt)
   end
 
   if love.keyboard.isDown("space") then
-    if canFire then
-      torpedo = {xPos = player.xPos + player.width, yPos = player.yPos + player.height/2, width = 16, height=16, speed=400, img = torpedoImage}
-      table.insert(torpedoes, torpedo)
-
-      canFire = false
-      torpedoTimer = torpedoTimerMax
+    torpedoSpeed = torpedoStartSpeed
+    if(left) then
+      torpedoSpeed = torpedoSpeed - player.speed/2
+    elseif(right) then
+      torpedoSpeed = torpedoSpeed + player.speed/2
     end
+    spawnTorpedo(player.xPos + player.width, player.yPos + player.height/2, torpedoSpeed)
   end
 
   for index, torpedo in ipairs(torpedoes) do
     torpedo.xPos = torpedo.xPos + dt * torpedo.speed
+    if torpedo.speed < torpedoMaxSpeed then
+      torpedo.speed = torpedo.speed + dt * 100
+    end
   end
 
   torpedoTimer = torpedoTimer - dt
   if torpedoTimer <= 0 then
     canFire = true
+  end
+end
+
+function spawnTorpedo(x, y, speed)
+  if canFire then
+    torpedo = {xPos = x, yPos = y, width = 16, height=16, speed=speed, img = torpedoImage}
+    table.insert(torpedoes, torpedo)
+
+    canFire = false
+    torpedoTimer = torpedoTimerMax
   end
 end
