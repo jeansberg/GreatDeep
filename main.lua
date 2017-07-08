@@ -13,14 +13,22 @@ function love.load()
 end
 
 function love.draw()
-  love.graphics.draw(player.img, player.xPos, player.yPos, 0, 2, 2)
+  love.graphics.setColor(186, 255, 255)
+  background = love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
+  love.graphics.setColor(255, 255, 255)
 
+  love.graphics.draw(player.img, player.xPos, player.yPos, 0, 2, 2)
   for index, torpedo in ipairs(torpedoes) do
     love.graphics.draw(torpedo.img, torpedo.xPos, torpedo.yPos)
   end
 end
 
 function love.update(dt)
+  updatePlayer(dt)
+  updateTorpedoes(dt)
+end
+
+function updatePlayer(dt)
   down = love.keyboard.isDown("down")
   up = love.keyboard.isDown("up")
   left = love.keyboard.isDown("left")
@@ -31,15 +39,15 @@ function love.update(dt)
     speed = speed / math.sqrt(2)
   end
 
-  if love.keyboard.isDown("down") and player.yPos<love.graphics.getHeight()-player.height then
+  if down and player.yPos<love.graphics.getHeight()-player.height then
     player.yPos = player.yPos + dt * speed
-  elseif love.keyboard.isDown("up") and player.yPos>0 then
+  elseif up and player.yPos>0 then
     player.yPos = player.yPos - dt * speed
   end
 
-  if love.keyboard.isDown("right") and player.xPos<love.graphics.getWidth()-player.width then
+  if right and player.xPos<love.graphics.getWidth()-player.width then
     player.xPos = player.xPos + dt * speed
-  elseif love.keyboard.isDown("left") and player.xPos>0 then
+  elseif left and player.xPos>0 then
     player.xPos = player.xPos - dt * speed
   end
 
@@ -53,16 +61,21 @@ function love.update(dt)
     spawnTorpedo(player.xPos + player.width, player.yPos + player.height/2, torpedoSpeed)
   end
 
+  torpedoTimer = torpedoTimer - dt
+  if torpedoTimer <= 0 then
+    canFire = true
+  end
+end
+
+function updateTorpedoes(dt)
   for index, torpedo in ipairs(torpedoes) do
     torpedo.xPos = torpedo.xPos + dt * torpedo.speed
     if torpedo.speed < torpedoMaxSpeed then
       torpedo.speed = torpedo.speed + dt * 100
     end
-  end
-
-  torpedoTimer = torpedoTimer - dt
-  if torpedoTimer <= 0 then
-    canFire = true
+    if torpedo.xPos > love.graphics.getWidth() then
+      torpedo = nil
+    end
   end
 end
 
