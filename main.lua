@@ -61,8 +61,9 @@ function updatePlayer(dt)
     spawnTorpedo(player.xPos + player.width, player.yPos + player.height/2, torpedoSpeed)
   end
 
-  torpedoTimer = torpedoTimer - dt
-  if torpedoTimer <= 0 then
+  if torpedoTimer > 0 then
+    torpedoTimer = torpedoTimer - dt
+  else
     canFire = true
   end
 end
