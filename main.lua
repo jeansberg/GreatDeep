@@ -3,6 +3,7 @@ function love.load()
   torpedoImage = love.graphics.newImage("resources/images/torpedo.png")
   squidImage = love.graphics.newImage("resources/images/squid.png")
   sharkImage = love.graphics.newImage("resources/images/shark.png")
+  swordfishImage = love.graphics.newImage("resources/images/swordfish.png")
 
   player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
   torpedoes = {}
@@ -14,10 +15,12 @@ function love.load()
   torpedoStartSpeed = 100
   torpedoMaxSpeed = 300
 
-  spawnTimerMax = 1
+  spawnTimerMax = 0.5
   spawnTimer = 0
   squidSpeed = 200
-  sharkSpeed = 250
+  sharkSpeed = 150
+  swordfishSpeed = 250
+  chargeSpeed = 500
 end
 
 function restart()
@@ -114,7 +117,7 @@ function updateEnemies(dt)
 
   for i=table.getn(enemies), 1, -1 do
     enemy=enemies[i]
-    enemy.xPos = enemy.xPos - enemy.speed * dt
+    enemy:update(dt)
     if enemy.xPos < -enemy.width then
       table.remove(enemies, i)
     end
@@ -158,13 +161,60 @@ end
 
 function spawnEnemy()
   y = love.math.random(0, love.graphics.getHeight() - 64)
-  enemyType = love.math.random(0, 1)
+  enemyType = love.math.random(0, 2)
   if enemyType == 1 then
-    enemy = {xPos = love.graphics.getWidth(), yPos = y, width = 64, height = 64, speed = squidSpeed, img = squidImage}
+    enemy = Enemy:new{yPos = y, speed = squidSpeed, img = squidImage, update=moveLeft}
+  elseif enemyType == 2 then
+    enemy = Enemy:new{yPos = y, speed = sharkSpeed, img = sharkImage, update=moveToPlayer}
   else
-    enemy = {xPos = love.graphics.getWidth(), yPos = y, width = 64, height = 64, speed = sharkSpeed, img = sharkImage}
+    enemy = Enemy:new{yPos = y, speed = swordfishSpeed, img = swordfishImage, update=chargePlayer}
   end
   table.insert(enemies, enemy)
 
   spawnTimer = spawnTimerMax
+end
+
+Enemy = {xPos = love.graphics.getWidth(), yPos = 0, width = 64, height = 64}
+
+function Enemy:new (o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function moveLeft(obj, dt)
+  obj.xPos = obj.xPos - obj.speed * dt
+end
+
+function moveToPlayer(obj, dt)
+  speed = obj.speed / math.sqrt(2)
+  if (obj.yPos - player.yPos) > 10 then
+    obj.yPos = obj.yPos - speed * dt
+    obj.xPos = obj.xPos - speed * dt
+  elseif (obj.yPos - player.yPos) < -10 then
+    obj.yPos = obj.yPos + speed * dt
+    obj.xPos = obj.xPos - speed * dt
+  else
+    obj.xPos = obj.xPos - obj.speed * dt
+  end
+end
+
+function chargePlayer(obj, dt)
+  xDistance = math.abs(obj.xPos - player.xPos)
+  yDistance = math.abs(obj.yPos - player.yPos)
+  distance = math.sqrt(yDistance^2 + xDistance^2)
+  if distance < 200 then
+    obj.speed = chargeSpeed
+  end
+  speed = obj.speed / math.sqrt(2)
+  if (obj.yPos - player.yPos) > 10 then
+    obj.yPos = obj.yPos - speed * dt
+    obj.xPos = obj.xPos - speed * dt
+  elseif (obj.yPos - player.yPos) < - 10 then
+    obj.yPos = obj.yPos + speed * dt
+    obj.xPos = obj.xPos - speed * dt
+  else
+    obj.xPos = obj.xPos - obj.speed * dt
+  end
 end
