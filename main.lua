@@ -10,9 +10,9 @@ function love.load()
   torpedoMaxSpeed = 300
 
   squidSpeed = 200
-  sharkSpeed = 150
-  swordfishSpeed = 250
-  chargeSpeed = 400
+  sharkSpeed = 250
+  swordfishSpeed = 300
+  chargeSpeed = 500
 
   spawnTimerMax = 0.5
 
@@ -130,7 +130,7 @@ function updateEnemies(dt)
 
   for i=table.getn(enemies), 1, -1 do
     enemy=enemies[i]
-    enemy:update(dt)
+    enemy.update = enemy:update(dt)
     if enemy.xPos < -enemy.width then
       table.remove(enemies, i)
     end
@@ -140,9 +140,9 @@ end
 function spawnEnemy()
   y = love.math.random(0, love.graphics.getHeight() - 64)
   enemyType = love.math.random(0, 2)
-  if enemyType == 1 then
+  if enemyType == 0 then
     enemy = Enemy:new{yPos = y, speed = squidSpeed, img = squidImage, update=moveLeft}
-  elseif enemyType == 2 then
+  elseif enemyType == 1 then
     enemy = Enemy:new{yPos = y, speed = sharkSpeed, img = sharkImage, update=moveToPlayer}
   else
     enemy = Enemy:new{yPos = y, speed = swordfishSpeed, img = swordfishImage, update=chargePlayer}
@@ -163,12 +163,12 @@ end
 
 function moveLeft(obj, dt)
   obj.xPos = obj.xPos - obj.speed * dt
+  return moveLeft
 end
 
 function moveToPlayer(obj, dt)
-  speed = obj.speed / math.sqrt(2)
-  xSpeed = 2 * speed
-  ySpeed = 0.5 * speed
+  xSpeed = math.sin(45) * obj.speed
+  ySpeed = math.cos(45) * obj.speed
   if (obj.yPos - player.yPos) > 10 then
     obj.yPos = obj.yPos - ySpeed * dt
     obj.xPos = obj.xPos - xSpeed * dt
@@ -178,16 +178,19 @@ function moveToPlayer(obj, dt)
   else
     obj.xPos = obj.xPos - obj.speed * dt
   end
+  return moveToPlayer
 end
 
 function chargePlayer(obj, dt)
   xDistance = math.abs(obj.xPos - player.xPos)
   yDistance = math.abs(obj.yPos - player.yPos)
   distance = math.sqrt(yDistance^2 + xDistance^2)
-  if distance < 200 then
+  if distance < 150 then
     obj.speed = chargeSpeed
-  end
+    return moveLeft
+  end 
   moveToPlayer(obj, dt)
+  return chargePlayer
 end
 
 -- Helper functions
