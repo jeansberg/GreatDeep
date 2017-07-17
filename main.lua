@@ -1,15 +1,34 @@
 function love.load()
   submarineImage = love.graphics.newImage("resources/images/submarine.png")
   torpedoImage = love.graphics.newImage("resources/images/torpedo.png")
+  squidImage = love.graphics.newImage("resources/images/squid.png")
+  sharkImage = love.graphics.newImage("resources/images/shark.png")
+  swordfishImage = love.graphics.newImage("resources/images/swordfish.png")
 
   player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
   torpedoes = {}
+  enemies = {}
 
   canFire = false
   torpedoTimerMax = 0.2
   torpedoTimer = torpedoTimerMax
   torpedoStartSpeed = 100
   torpedoMaxSpeed = 300
+
+  spawnTimerMax = 0.5
+  spawnTimer = 0
+  squidSpeed = 200
+  sharkSpeed = 150
+  swordfishSpeed = 250
+  chargeSpeed = 400
+end
+
+function restart()
+  player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
+  torpedoes = {}
+  torpedoTimer = torpedoTimerMax
+  enemies = {}
+  spawnTimer = 0
 end
 
 function love.draw()
@@ -18,15 +37,24 @@ function love.draw()
   love.graphics.setColor(255, 255, 255)
 
   love.graphics.draw(player.img, player.xPos, player.yPos, 0, 2, 2)
+
   for index, torpedo in ipairs(torpedoes) do
     love.graphics.draw(torpedo.img, torpedo.xPos, torpedo.yPos)
+  end
+
+  for index, enemy in ipairs(enemies) do
+    love.graphics.draw(enemy.img, enemy.xPos, enemy.yPos, 0, 2, 2)
   end
 end
 
 function love.update(dt)
   updatePlayer(dt)
   updateTorpedoes(dt)
+  updateEnemies(dt)
+  checkCollisions()
 end
+
+-- Player logic
 
 function updatePlayer(dt)
   down = love.keyboard.isDown("down")
@@ -68,14 +96,17 @@ function updatePlayer(dt)
   end
 end
 
+-- Projectile logic
+
 function updateTorpedoes(dt)
-  for index, torpedo in ipairs(torpedoes) do
+  for i=table.getn(torpedoes), 1, -1 do
+    torpedo = torpedoes[i]
     torpedo.xPos = torpedo.xPos + dt * torpedo.speed
     if torpedo.speed < torpedoMaxSpeed then
       torpedo.speed = torpedo.speed + dt * 100
     end
     if torpedo.xPos > love.graphics.getWidth() then
-      torpedo = nil
+      table.remove(torpedoes, i)
     end
   end
 end
@@ -87,5 +118,103 @@ function spawnTorpedo(x, y, speed)
 
     canFire = false
     torpedoTimer = torpedoTimerMax
+  end
+end
+
+-- Enemy logic
+
+function updateEnemies(dt)
+  if spawnTimer > 0 then
+    spawnTimer = spawnTimer - dt
+  else
+    spawnEnemy()
+  end
+
+  for i=table.getn(enemies), 1, -1 do
+    enemy=enemies[i]
+    enemy:update(dt)
+    if enemy.xPos < -enemy.width then
+      table.remove(enemies, i)
+    end
+  end
+end
+
+function spawnEnemy()
+  y = love.math.random(0, love.graphics.getHeight() - 64)
+  enemyType = love.math.random(0, 2)
+  if enemyType == 1 then
+    enemy = Enemy:new{yPos = y, speed = squidSpeed, img = squidImage, update=moveLeft}
+  elseif enemyType == 2 then
+    enemy = Enemy:new{yPos = y, speed = sharkSpeed, img = sharkImage, update=moveToPlayer}
+  else
+    enemy = Enemy:new{yPos = y, speed = swordfishSpeed, img = swordfishImage, update=chargePlayer}
+  end
+  table.insert(enemies, enemy)
+
+  spawnTimer = spawnTimerMax
+end
+
+Enemy = {xPos = love.graphics.getWidth(), yPos = 0, width = 64, height = 64}
+
+function Enemy:new (o)
+  o = o or {}
+  setmetatable(o, self)
+  self.__index = self
+  return o
+end
+
+function moveLeft(obj, dt)
+  obj.xPos = obj.xPos - obj.speed * dt
+end
+
+function moveToPlayer(obj, dt)
+  speed = obj.speed / math.sqrt(2)
+  xSpeed = 2 * speed
+  ySpeed = 0.5 * speed
+  if (obj.yPos - player.yPos) > 10 then
+    obj.yPos = obj.yPos - ySpeed * dt
+    obj.xPos = obj.xPos - xSpeed * dt
+  elseif (obj.yPos - player.yPos) < -10 then
+    obj.yPos = obj.yPos + ySpeed * dt
+    obj.xPos = obj.xPos - xSpeed * dt
+  else
+    obj.xPos = obj.xPos - obj.speed * dt
+  end
+end
+
+function chargePlayer(obj, dt)
+  xDistance = math.abs(obj.xPos - player.xPos)
+  yDistance = math.abs(obj.yPos - player.yPos)
+  distance = math.sqrt(yDistance^2 + xDistance^2)
+  if distance < 200 then
+    obj.speed = chargeSpeed
+  end
+  moveToPlayer(obj, dt)
+end
+
+-- Helper functions
+
+function checkCollisions()
+  for index, enemy in ipairs(enemies) do
+    if intersects(player, enemy) or intersects(enemy, player) then
+      restart()
+    end
+
+    for index2, torpedo in ipairs(torpedoes) do
+      if intersects(enemy, torpedo) then
+        table.remove(enemies, index)
+        table.remove(torpedoes, index2)
+        break
+      end
+    end
+  end
+end
+
+function intersects(rect1, rect2)
+  if rect1.xPos < rect2.xPos and rect1.xPos + rect1.width > rect2.xPos and
+     rect1.yPos < rect2.yPos and rect1.yPos + rect1.height > rect2.yPos then
+    return true
+  else
+    return false
   end
 end
