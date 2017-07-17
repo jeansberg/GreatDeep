@@ -20,6 +20,7 @@ function love.load()
 end
 
 function startGame()
+print("Starting")
   player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
   torpedoes = {}
   enemies = {}
@@ -167,8 +168,8 @@ function moveLeft(obj, dt)
 end
 
 function moveToPlayer(obj, dt)
-  xSpeed = math.sin(45) * obj.speed
-  ySpeed = math.cos(45) * obj.speed
+  xSpeed = math.sin(math.rad (60)) * obj.speed
+  ySpeed = math.cos(math.rad (60)) * obj.speed
   if (obj.yPos - player.yPos) > 10 then
     obj.yPos = obj.yPos - ySpeed * dt
     obj.xPos = obj.xPos - xSpeed * dt
