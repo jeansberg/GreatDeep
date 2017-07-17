@@ -20,7 +20,7 @@ function love.load()
   squidSpeed = 200
   sharkSpeed = 150
   swordfishSpeed = 250
-  chargeSpeed = 500
+  chargeSpeed = 400
 end
 
 function restart()
@@ -51,9 +51,10 @@ function love.update(dt)
   updatePlayer(dt)
   updateTorpedoes(dt)
   updateEnemies(dt)
-
   checkCollisions()
 end
+
+-- Player logic
 
 function updatePlayer(dt)
   down = love.keyboard.isDown("down")
@@ -95,6 +96,8 @@ function updatePlayer(dt)
   end
 end
 
+-- Projectile logic
+
 function updateTorpedoes(dt)
   for i=table.getn(torpedoes), 1, -1 do
     torpedo = torpedoes[i]
@@ -107,6 +110,18 @@ function updateTorpedoes(dt)
     end
   end
 end
+
+function spawnTorpedo(x, y, speed)
+  if canFire then
+    torpedo = {xPos = x, yPos = y, width = 16, height=16, speed=speed, img = torpedoImage}
+    table.insert(torpedoes, torpedo)
+
+    canFire = false
+    torpedoTimer = torpedoTimerMax
+  end
+end
+
+-- Enemy logic
 
 function updateEnemies(dt)
   if spawnTimer > 0 then
@@ -121,41 +136,6 @@ function updateEnemies(dt)
     if enemy.xPos < -enemy.width then
       table.remove(enemies, i)
     end
-  end
-end
-
-function checkCollisions()
-  for index, enemy in ipairs(enemies) do
-    if intersects(player, enemy) or intersects(enemy, player) then
-      restart()
-    end
-
-    for index2, torpedo in ipairs(torpedoes) do
-      if intersects(enemy, torpedo) then
-        table.remove(enemies, index)
-        table.remove(torpedoes, index2)
-        break
-      end
-    end
-  end
-end
-
-function intersects(rect1, rect2)
-  if rect1.xPos < rect2.xPos and rect1.xPos + rect1.width > rect2.xPos and
-     rect1.yPos < rect2.yPos and rect1.yPos + rect1.height > rect2.yPos then
-    return true
-  else
-    return false
-  end
-end
-
-function spawnTorpedo(x, y, speed)
-  if canFire then
-    torpedo = {xPos = x, yPos = y, width = 16, height=16, speed=speed, img = torpedoImage}
-    table.insert(torpedoes, torpedo)
-
-    canFire = false
-    torpedoTimer = torpedoTimerMax
   end
 end
 
@@ -189,12 +169,14 @@ end
 
 function moveToPlayer(obj, dt)
   speed = obj.speed / math.sqrt(2)
+  xSpeed = 2 * speed
+  ySpeed = 0.5 * speed
   if (obj.yPos - player.yPos) > 10 then
-    obj.yPos = obj.yPos - speed * dt
-    obj.xPos = obj.xPos - speed * dt
+    obj.yPos = obj.yPos - ySpeed * dt
+    obj.xPos = obj.xPos - xSpeed * dt
   elseif (obj.yPos - player.yPos) < -10 then
-    obj.yPos = obj.yPos + speed * dt
-    obj.xPos = obj.xPos - speed * dt
+    obj.yPos = obj.yPos + ySpeed * dt
+    obj.xPos = obj.xPos - xSpeed * dt
   else
     obj.xPos = obj.xPos - obj.speed * dt
   end
@@ -207,14 +189,32 @@ function chargePlayer(obj, dt)
   if distance < 200 then
     obj.speed = chargeSpeed
   end
-  speed = obj.speed / math.sqrt(2)
-  if (obj.yPos - player.yPos) > 10 then
-    obj.yPos = obj.yPos - speed * dt
-    obj.xPos = obj.xPos - speed * dt
-  elseif (obj.yPos - player.yPos) < - 10 then
-    obj.yPos = obj.yPos + speed * dt
-    obj.xPos = obj.xPos - speed * dt
+  moveToPlayer(obj, dt)
+end
+
+-- Helper functions
+
+function checkCollisions()
+  for index, enemy in ipairs(enemies) do
+    if intersects(player, enemy) or intersects(enemy, player) then
+      restart()
+    end
+
+    for index2, torpedo in ipairs(torpedoes) do
+      if intersects(enemy, torpedo) then
+        table.remove(enemies, index)
+        table.remove(torpedoes, index2)
+        break
+      end
+    end
+  end
+end
+
+function intersects(rect1, rect2)
+  if rect1.xPos < rect2.xPos and rect1.xPos + rect1.width > rect2.xPos and
+     rect1.yPos < rect2.yPos and rect1.yPos + rect1.height > rect2.yPos then
+    return true
   else
-    obj.xPos = obj.xPos - obj.speed * dt
+    return false
   end
 end
