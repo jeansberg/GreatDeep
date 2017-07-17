@@ -5,29 +5,27 @@ function love.load()
   sharkImage = love.graphics.newImage("resources/images/shark.png")
   swordfishImage = love.graphics.newImage("resources/images/swordfish.png")
 
-  player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
-  torpedoes = {}
-  enemies = {}
-
-  canFire = false
   torpedoTimerMax = 0.2
-  torpedoTimer = torpedoTimerMax
   torpedoStartSpeed = 100
   torpedoMaxSpeed = 300
 
-  spawnTimerMax = 0.5
-  spawnTimer = 0
   squidSpeed = 200
   sharkSpeed = 150
   swordfishSpeed = 250
   chargeSpeed = 400
+
+  spawnTimerMax = 0.5
+
+  startGame()
 end
 
-function restart()
+function startGame()
   player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
   torpedoes = {}
-  torpedoTimer = torpedoTimerMax
   enemies = {}
+
+  canFire = true
+  torpedoTimer = torpedoTimerMax
   spawnTimer = 0
 end
 
@@ -197,7 +195,7 @@ end
 function checkCollisions()
   for index, enemy in ipairs(enemies) do
     if intersects(player, enemy) or intersects(enemy, player) then
-      restart()
+      startGame()
     end
 
     for index2, torpedo in ipairs(torpedoes) do
