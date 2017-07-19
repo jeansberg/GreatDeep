@@ -16,12 +16,15 @@ function love.load()
 
   spawnTimerMax = 0.5
 
+  circle = getCircle(50)
+  smallCircle = getCircle(40)
+
   startGame()
 end
 
 function startGame()
 print("Starting")
-  player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
+  player = {xPos = 0, yPos = 0, angle = 0, width = 64, height = 64, speed=200, img=submarineImage, pSystem=getBubbleTrail(circle)}
   torpedoes = {}
   enemies = {}
 
@@ -35,14 +38,16 @@ function love.draw()
   background = love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(255, 255, 255)
 
-  love.graphics.draw(player.img, player.xPos, player.yPos, 0, 2, 2)
+  love.graphics.draw(player.img, player.xPos, player.yPos, player.angle, 2, 2)
+  love.graphics.draw(player.pSystem, 0, 0)
 
   for index, torpedo in ipairs(torpedoes) do
     love.graphics.draw(torpedo.img, torpedo.xPos, torpedo.yPos)
+    love.graphics.draw(torpedo.pSystem, 0, 0)
   end
 
   for index, enemy in ipairs(enemies) do
-    love.graphics.draw(enemy.img, enemy.xPos, enemy.yPos, 0, 2, 2)
+    love.graphics.draw(enemy.img, enemy.xPos, enemy.yPos, enemy.angle, 2, 2)
   end
 end
 
@@ -68,8 +73,15 @@ function updatePlayer(dt)
 
   if down and player.yPos<love.graphics.getHeight()-player.height then
     player.yPos = player.yPos + dt * speed
+    player.angle = 0.1
+    player.pSystem:setLinearAcceleration(-75, -15, -150, -15)
   elseif up and player.yPos>0 then
     player.yPos = player.yPos - dt * speed
+    player.angle = -0.1
+    player.pSystem:setLinearAcceleration(-75, 15, -150, 15)
+  else
+    player.angle = 0
+    player.pSystem:setLinearAcceleration(-75, 0, -150, 0)
   end
 
   if right and player.xPos<love.graphics.getWidth()-player.width then
@@ -93,6 +105,17 @@ function updatePlayer(dt)
   else
     canFire = true
   end
+
+  if(left) then
+    player.pSystem:setEmissionRate(10)
+  elseif(right) then
+    player.pSystem:setEmissionRate(20)
+  else
+    player.pSystem:setEmissionRate(15)
+  end
+
+  player.pSystem:setPosition(player.xPos, player.yPos + player.height / 2)
+  player.pSystem:update(dt)
 end
 
 -- Projectile logic
@@ -101,6 +124,8 @@ function updateTorpedoes(dt)
   for i=table.getn(torpedoes), 1, -1 do
     torpedo = torpedoes[i]
     torpedo.xPos = torpedo.xPos + dt * torpedo.speed
+    torpedo.pSystem:setPosition(torpedo.xPos, torpedo.yPos + torpedo.height / 2)
+    torpedo.pSystem:update(dt)
     if torpedo.speed < torpedoMaxSpeed then
       torpedo.speed = torpedo.speed + dt * 100
     end
@@ -112,7 +137,8 @@ end
 
 function spawnTorpedo(x, y, speed)
   if canFire then
-    torpedo = {xPos = x, yPos = y, width = 16, height=16, speed=speed, img = torpedoImage}
+    torpedo = {xPos = x, yPos = y, width = 16, height=16, speed=speed, img = torpedoImage, pSystem = getBubbleTrail(smallCircle)}
+    torpedo.pSystem:setEmissionRate(20)
     table.insert(torpedoes, torpedo)
 
     canFire = false
@@ -153,7 +179,7 @@ function spawnEnemy()
   spawnTimer = spawnTimerMax
 end
 
-Enemy = {xPos = love.graphics.getWidth(), yPos = 0, width = 64, height = 64}
+Enemy = {xPos = love.graphics.getWidth(), yPos = 0, width = 64, height = 64, angle = 0}
 
 function Enemy:new (o)
   o = o or {}
@@ -173,11 +199,14 @@ function moveToPlayer(obj, dt)
   if (obj.yPos - player.yPos) > 10 then
     obj.yPos = obj.yPos - ySpeed * dt
     obj.xPos = obj.xPos - xSpeed * dt
+    obj.angle = 0.1
   elseif (obj.yPos - player.yPos) < -10 then
     obj.yPos = obj.yPos + ySpeed * dt
     obj.xPos = obj.xPos - xSpeed * dt
+    obj.angle = -0.1
   else
     obj.xPos = obj.xPos - obj.speed * dt
+    obj.angle = 0
   end
   return moveToPlayer
 end
@@ -219,4 +248,25 @@ function intersects(rect1, rect2)
   else
     return false
   end
+end
+
+-- Particle systems
+
+function getCircle(size)
+  local circle = love.graphics.newCanvas(size, size)
+  love.graphics.setCanvas(circle)
+  love.graphics.setBlendMode("alpha")
+  love.graphics.setColor(255, 255, 255, 255)
+  love.graphics.ellipse("fill", size/2, size/2, size/2, size/4)
+  love.graphics.setCanvas()
+  return circle
+end
+
+function getBubbleTrail(image)
+  pSystem = love.graphics.newParticleSystem(image, 50)
+  pSystem:setParticleLifetime(1, 1)
+	pSystem:setLinearAcceleration(-75, 0, -150, 0)
+	pSystem:setColors(255, 255, 255, 200, 255, 255, 255, 100, 255, 255, 255, 0)
+  pSystem:setSizes(0.2, 0.8)
+  return pSystem
 end
