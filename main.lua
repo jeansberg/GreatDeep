@@ -20,12 +20,14 @@ function love.load()
 
   bubble = getBubble(50)
   smallCircle = getBubble(40)
-  blast = getBlast()
+  smallBlast = getBlast(50)
+  blast = getBlast(100)
 
   startGame()
 end
 
 function startGame()
+  playerAlive = true
   player = {xPos = 0, yPos = 0, angle = 0, width = 64, height = 64, speed=200, img=submarineImage, pSystem=getBubbleTrail(bubble)}
   torpedoes = {}
   enemies = {}
@@ -34,6 +36,7 @@ function startGame()
   canFire = true
   torpedoTimer = torpedoTimerMax
   spawnTimer = 0
+  restartTimer = 1
 
   backgroundPosition = 0
   groundPosition = 0
@@ -51,8 +54,10 @@ function love.draw()
   love.graphics.draw(groundImage, groundPosition, 400, 0, 2, 2)
   love.graphics.draw(groundImage, groundPosition + 800, 400, 0, 2, 2)
 
-  love.graphics.draw(player.img, player.xPos, player.yPos, player.angle, 2, 2)
-  love.graphics.draw(player.pSystem, 0, 0)
+  if playerAlive then
+    love.graphics.draw(player.img, player.xPos, player.yPos, player.angle, 2, 2)
+    love.graphics.draw(player.pSystem, 0, 0)
+  end
 
   for index, torpedo in ipairs(torpedoes) do
     love.graphics.draw(torpedo.img, torpedo.xPos, torpedo.yPos)
@@ -84,6 +89,14 @@ function love.update(dt)
     backgroundPosition = backgroundPosition - dt * 50
   else
     backgroundPosition = 0
+  end
+
+  if playerAlive == false then
+    if restartTimer > 0 then
+      restartTimer = restartTimer - dt
+    else
+      startGame()
+    end   
   end
 end
 
@@ -257,13 +270,18 @@ end
 
 function checkCollisions()
   for index, enemy in ipairs(enemies) do
-    if intersects(player, enemy) or intersects(enemy, player) then
-      startGame()
+    if playerAlive and (intersects(player, enemy) or intersects(enemy, player)) then
+      local explosion = getExplosion(blast)
+      explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2)
+      explosion:emit(20)
+      table.insert(explosions, explosion)
+      playerAlive = false
+      break
     end
 
     for index2, torpedo in ipairs(torpedoes) do
       if intersects(enemy, torpedo) then
-        local explosion = getExplosion(blast)
+        local explosion = getExplosion(smallBlast)
         explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2)
         explosion:emit(10)
 
@@ -297,12 +315,12 @@ function getBubble(size)
   return bubble
 end
 
-function getBlast()
-  local blast = love.graphics.newCanvas(50, 50)
+function getBlast(size)
+  local blast = love.graphics.newCanvas(size, size)
   love.graphics.setCanvas(blast)
   love.graphics.setBlendMode("alpha")
   love.graphics.setColor(255, 255, 255, 255)
-  love.graphics.circle("fill", 25, 25, 25)
+  love.graphics.circle("fill", size/2, size/2, size/2)
   love.graphics.setCanvas()
   return blast
 end
