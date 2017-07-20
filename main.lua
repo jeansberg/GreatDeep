@@ -4,6 +4,8 @@ function love.load()
   squidImage = love.graphics.newImage("resources/images/squid.png")
   sharkImage = love.graphics.newImage("resources/images/shark.png")
   swordfishImage = love.graphics.newImage("resources/images/swordfish.png")
+  groundImage = love.graphics.newImage("resources/images/ground.png")
+  backgroundImage = love.graphics.newImage("resources/images/background.png")
 
   torpedoTimerMax = 0.2
   torpedoStartSpeed = 100
@@ -24,7 +26,6 @@ function love.load()
 end
 
 function startGame()
-print("Starting")
   player = {xPos = 0, yPos = 0, angle = 0, width = 64, height = 64, speed=200, img=submarineImage, pSystem=getBubbleTrail(bubble)}
   torpedoes = {}
   enemies = {}
@@ -33,12 +34,22 @@ print("Starting")
   canFire = true
   torpedoTimer = torpedoTimerMax
   spawnTimer = 0
+
+  backgroundPosition = 0
+  groundPosition = 0
 end
 
 function love.draw()
   love.graphics.setColor(186, 255, 255)
   background = love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(255, 255, 255)
+
+  love.graphics.setColor(100, 200, 200, 200)
+  love.graphics.draw(backgroundImage, backgroundPosition, 380, 0, 2, 2)
+  love.graphics.draw(backgroundImage, backgroundPosition + 800, 380, 0, 2, 2)
+  love.graphics.setColor(255, 255, 255, 255)
+  love.graphics.draw(groundImage, groundPosition, 400, 0, 2, 2)
+  love.graphics.draw(groundImage, groundPosition + 800, 400, 0, 2, 2)
 
   love.graphics.draw(player.img, player.xPos, player.yPos, player.angle, 2, 2)
   love.graphics.draw(player.pSystem, 0, 0)
@@ -63,6 +74,17 @@ function love.update(dt)
   updateEnemies(dt)
   updateExplosions(dt)
   checkCollisions()
+
+  if groundPosition > -800 then
+    groundPosition = groundPosition - dt * 100
+  else
+    groundPosition = 0
+  end
+  if backgroundPosition > -800 then
+    backgroundPosition = backgroundPosition - dt * 50
+  else
+    backgroundPosition = 0
+  end
 end
 
 -- Player logic
@@ -224,6 +246,7 @@ function chargePlayer(obj, dt)
   distance = math.sqrt(yDistance^2 + xDistance^2)
   if distance < 150 then
     obj.speed = chargeSpeed
+    obj.angle = 0
     return moveLeft
   end 
   moveToPlayer(obj, dt)
@@ -243,10 +266,7 @@ function checkCollisions()
         local explosion = getExplosion(blast)
         explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2)
         explosion:emit(10)
-        explosion:setPosition(enemy.xPos + enemy.width/2 - 10, enemy.yPos + enemy.height/2)
-        explosion:emit(10)
-        explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2 - 10)
-        explosion:emit(10)
+
         table.insert(explosions, explosion)
         table.remove(enemies, index)
         table.remove(torpedoes, index2)
