@@ -16,17 +16,19 @@ function love.load()
 
   spawnTimerMax = 0.5
 
-  circle = getCircle(50)
-  smallCircle = getCircle(40)
+  bubble = getBubble(50)
+  smallCircle = getBubble(40)
+  blast = getBlast()
 
   startGame()
 end
 
 function startGame()
 print("Starting")
-  player = {xPos = 0, yPos = 0, angle = 0, width = 64, height = 64, speed=200, img=submarineImage, pSystem=getBubbleTrail(circle)}
+  player = {xPos = 0, yPos = 0, angle = 0, width = 64, height = 64, speed=200, img=submarineImage, pSystem=getBubbleTrail(bubble)}
   torpedoes = {}
   enemies = {}
+  explosions = {}
 
   canFire = true
   torpedoTimer = torpedoTimerMax
@@ -49,12 +51,17 @@ function love.draw()
   for index, enemy in ipairs(enemies) do
     love.graphics.draw(enemy.img, enemy.xPos, enemy.yPos, enemy.angle, 2, 2)
   end
+
+  for index, explosion in ipairs(explosions) do
+    love.graphics.draw(explosion, 0, 0)
+  end
 end
 
 function love.update(dt)
   updatePlayer(dt)
   updateTorpedoes(dt)
   updateEnemies(dt)
+  updateExplosions(dt)
   checkCollisions()
 end
 
@@ -233,6 +240,14 @@ function checkCollisions()
 
     for index2, torpedo in ipairs(torpedoes) do
       if intersects(enemy, torpedo) then
+        local explosion = getExplosion(blast)
+        explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2)
+        explosion:emit(10)
+        explosion:setPosition(enemy.xPos + enemy.width/2 - 10, enemy.yPos + enemy.height/2)
+        explosion:emit(10)
+        explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2 - 10)
+        explosion:emit(10)
+        table.insert(explosions, explosion)
         table.remove(enemies, index)
         table.remove(torpedoes, index2)
         break
@@ -252,14 +267,24 @@ end
 
 -- Particle systems
 
-function getCircle(size)
-  local circle = love.graphics.newCanvas(size, size)
-  love.graphics.setCanvas(circle)
+function getBubble(size)
+  local bubble = love.graphics.newCanvas(size, size)
+  love.graphics.setCanvas(bubble)
   love.graphics.setBlendMode("alpha")
   love.graphics.setColor(255, 255, 255, 255)
   love.graphics.ellipse("fill", size/2, size/2, size/2, size/4)
   love.graphics.setCanvas()
-  return circle
+  return bubble
+end
+
+function getBlast()
+  local blast = love.graphics.newCanvas(50, 50)
+  love.graphics.setCanvas(blast)
+  love.graphics.setBlendMode("alpha")
+  love.graphics.setColor(255, 255, 255, 255)
+  love.graphics.circle("fill", 25, 25, 25)
+  love.graphics.setCanvas()
+  return blast
 end
 
 function getBubbleTrail(image)
@@ -269,4 +294,23 @@ function getBubbleTrail(image)
 	pSystem:setColors(255, 255, 255, 200, 255, 255, 255, 100, 255, 255, 255, 0)
   pSystem:setSizes(0.2, 0.8)
   return pSystem
+end
+
+function getExplosion(image)
+  pSystem = love.graphics.newParticleSystem(image, 30)
+  pSystem:setParticleLifetime(0.5, 0.5)
+  pSystem:setLinearAcceleration(-100, -100, 100, 100)
+	pSystem:setColors(255, 255, 0, 255, 255, 153, 51, 255, 64, 64, 64, 0)
+  pSystem:setSizes(0.5, 0.5)
+  return pSystem
+end
+
+function updateExplosions(dt)
+  for i = table.getn(explosions), 1, -1 do
+    explosion = explosions[i]
+    explosion:update(dt)
+    if explosion:getCount() == 0 then
+      table.remove(explosions, i)
+    end
+  end
 end
