@@ -16,7 +16,7 @@ function love.load()
   swordfishSpeed = 300
   chargeSpeed = 500
 
-  spawnTimerMax = 0.5
+  spawnTimerMax = 1
 
   bubble = getBubble(50)
   smallCircle = getBubble(40)
@@ -345,7 +345,7 @@ end
 
 function updateExplosions(dt)
   for i = table.getn(explosions), 1, -1 do
-    explosion = explosions[i]
+    local explosion = explosions[i]
     explosion:update(dt)
     if explosion:getCount() == 0 then
       table.remove(explosions, i)
