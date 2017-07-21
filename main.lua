@@ -4,6 +4,8 @@ function love.load()
   squidImage = love.graphics.newImage("resources/images/squid.png")
   sharkImage = love.graphics.newImage("resources/images/shark.png")
   swordfishImage = love.graphics.newImage("resources/images/swordfish.png")
+  groundImage = love.graphics.newImage("resources/images/ground.png")
+  backgroundImage = love.graphics.newImage("resources/images/background.png")
 
   torpedoTimerMax = 0.2
   torpedoStartSpeed = 100
@@ -14,20 +16,30 @@ function love.load()
   swordfishSpeed = 300
   chargeSpeed = 500
 
-  spawnTimerMax = 0.5
+  spawnTimerMax = 1
+
+  bubble = getBubble(50)
+  smallCircle = getBubble(40)
+  smallBlast = getBlast(50)
+  blast = getBlast(100)
 
   startGame()
 end
 
 function startGame()
-print("Starting")
-  player = {xPos = 0, yPos = 0, width = 64, height = 64, speed=200, img=submarineImage}
+  playerAlive = true
+  player = {xPos = 0, yPos = 0, angle = 0, width = 64, height = 64, speed=200, img=submarineImage, pSystem=getBubbleTrail(bubble)}
   torpedoes = {}
   enemies = {}
+  explosions = {}
 
   canFire = true
   torpedoTimer = torpedoTimerMax
   spawnTimer = 0
+  restartTimer = 1
+
+  backgroundPosition = 0
+  groundPosition = 0
 end
 
 function love.draw()
@@ -35,14 +47,29 @@ function love.draw()
   background = love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), love.graphics.getHeight())
   love.graphics.setColor(255, 255, 255)
 
-  love.graphics.draw(player.img, player.xPos, player.yPos, 0, 2, 2)
+  love.graphics.setColor(100, 200, 200, 200)
+  love.graphics.draw(backgroundImage, backgroundPosition, 380, 0, 2, 2)
+  love.graphics.draw(backgroundImage, backgroundPosition + 800, 380, 0, 2, 2)
+  love.graphics.setColor(255, 255, 255, 255)
+  love.graphics.draw(groundImage, groundPosition, 400, 0, 2, 2)
+  love.graphics.draw(groundImage, groundPosition + 800, 400, 0, 2, 2)
+
+  if playerAlive then
+    love.graphics.draw(player.img, player.xPos, player.yPos, player.angle, 2, 2)
+    love.graphics.draw(player.pSystem, 0, 0)
+  end
 
   for index, torpedo in ipairs(torpedoes) do
     love.graphics.draw(torpedo.img, torpedo.xPos, torpedo.yPos)
+    love.graphics.draw(torpedo.pSystem, 0, 0)
   end
 
   for index, enemy in ipairs(enemies) do
-    love.graphics.draw(enemy.img, enemy.xPos, enemy.yPos, 0, 2, 2)
+    love.graphics.draw(enemy.img, enemy.xPos, enemy.yPos, enemy.angle, 2, 2)
+  end
+
+  for index, explosion in ipairs(explosions) do
+    love.graphics.draw(explosion, 0, 0)
   end
 end
 
@@ -50,7 +77,27 @@ function love.update(dt)
   updatePlayer(dt)
   updateTorpedoes(dt)
   updateEnemies(dt)
+  updateExplosions(dt)
   checkCollisions()
+
+  if groundPosition > -800 then
+    groundPosition = groundPosition - dt * 100
+  else
+    groundPosition = 0
+  end
+  if backgroundPosition > -800 then
+    backgroundPosition = backgroundPosition - dt * 50
+  else
+    backgroundPosition = 0
+  end
+
+  if playerAlive == false then
+    if restartTimer > 0 then
+      restartTimer = restartTimer - dt
+    else
+      startGame()
+    end   
+  end
 end
 
 -- Player logic
@@ -68,8 +115,12 @@ function updatePlayer(dt)
 
   if down and player.yPos<love.graphics.getHeight()-player.height then
     player.yPos = player.yPos + dt * speed
+    player.angle = 0.1
   elseif up and player.yPos>0 then
     player.yPos = player.yPos - dt * speed
+    player.angle = -0.1
+  else
+    player.angle = 0
   end
 
   if right and player.xPos<love.graphics.getWidth()-player.width then
@@ -93,6 +144,17 @@ function updatePlayer(dt)
   else
     canFire = true
   end
+
+  if(left) then
+    player.pSystem:setEmissionRate(10)
+  elseif(right) then
+    player.pSystem:setEmissionRate(20)
+  else
+    player.pSystem:setEmissionRate(15)
+  end
+
+  player.pSystem:setPosition(player.xPos, player.yPos + player.height / 2)
+  player.pSystem:update(dt)
 end
 
 -- Projectile logic
@@ -101,6 +163,8 @@ function updateTorpedoes(dt)
   for i=table.getn(torpedoes), 1, -1 do
     torpedo = torpedoes[i]
     torpedo.xPos = torpedo.xPos + dt * torpedo.speed
+    torpedo.pSystem:setPosition(torpedo.xPos, torpedo.yPos + torpedo.height / 2)
+    torpedo.pSystem:update(dt)
     if torpedo.speed < torpedoMaxSpeed then
       torpedo.speed = torpedo.speed + dt * 100
     end
@@ -112,7 +176,8 @@ end
 
 function spawnTorpedo(x, y, speed)
   if canFire then
-    torpedo = {xPos = x, yPos = y, width = 16, height=16, speed=speed, img = torpedoImage}
+    torpedo = {xPos = x, yPos = y, width = 16, height=16, speed=speed, img = torpedoImage, pSystem = getBubbleTrail(smallCircle)}
+    torpedo.pSystem:setEmissionRate(20)
     table.insert(torpedoes, torpedo)
 
     canFire = false
@@ -153,7 +218,7 @@ function spawnEnemy()
   spawnTimer = spawnTimerMax
 end
 
-Enemy = {xPos = love.graphics.getWidth(), yPos = 0, width = 64, height = 64}
+Enemy = {xPos = love.graphics.getWidth(), yPos = 0, width = 64, height = 64, angle = 0}
 
 function Enemy:new (o)
   o = o or {}
@@ -173,11 +238,14 @@ function moveToPlayer(obj, dt)
   if (obj.yPos - player.yPos) > 10 then
     obj.yPos = obj.yPos - ySpeed * dt
     obj.xPos = obj.xPos - xSpeed * dt
+    obj.angle = 0.1
   elseif (obj.yPos - player.yPos) < -10 then
     obj.yPos = obj.yPos + ySpeed * dt
     obj.xPos = obj.xPos - xSpeed * dt
+    obj.angle = -0.1
   else
     obj.xPos = obj.xPos - obj.speed * dt
+    obj.angle = 0
   end
   return moveToPlayer
 end
@@ -188,6 +256,7 @@ function chargePlayer(obj, dt)
   distance = math.sqrt(yDistance^2 + xDistance^2)
   if distance < 150 then
     obj.speed = chargeSpeed
+    obj.angle = 0
     return moveLeft
   end 
   moveToPlayer(obj, dt)
@@ -198,12 +267,22 @@ end
 
 function checkCollisions()
   for index, enemy in ipairs(enemies) do
-    if intersects(player, enemy) or intersects(enemy, player) then
-      startGame()
+    if playerAlive and (intersects(player, enemy) or intersects(enemy, player)) then
+      local explosion = getExplosion(blast)
+      explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2)
+      explosion:emit(20)
+      table.insert(explosions, explosion)
+      playerAlive = false
+      break
     end
 
     for index2, torpedo in ipairs(torpedoes) do
       if intersects(enemy, torpedo) then
+        local explosion = getExplosion(smallBlast)
+        explosion:setPosition(enemy.xPos + enemy.width/2, enemy.yPos + enemy.height/2)
+        explosion:emit(10)
+
+        table.insert(explosions, explosion)
         table.remove(enemies, index)
         table.remove(torpedoes, index2)
         break
@@ -218,5 +297,53 @@ function intersects(rect1, rect2)
     return true
   else
     return false
+  end
+end
+
+-- Particle systems
+
+function getBubble(size)
+  local bubble = love.graphics.newCanvas(size, size)
+  love.graphics.setCanvas(bubble)
+  love.graphics.setColor(255, 255, 255, 255)
+  love.graphics.ellipse("fill", size/2, size/2, size/2, size/4)
+  love.graphics.setCanvas()
+  return bubble
+end
+
+function getBlast(size)
+  local blast = love.graphics.newCanvas(size, size)
+  love.graphics.setCanvas(blast)
+  love.graphics.setColor(255, 255, 255, 255)
+  love.graphics.circle("fill", size/2, size/2, size/2)
+  love.graphics.setCanvas()
+  return blast
+end
+
+function getBubbleTrail(image)
+  pSystem = love.graphics.newParticleSystem(image, 50)
+  pSystem:setParticleLifetime(1, 1)
+  pSystem:setSpeed(-50)
+	pSystem:setColors(255, 255, 255, 200, 255, 255, 255, 100, 255, 255, 255, 0)
+  pSystem:setSizes(0.2, 0.8)
+  return pSystem
+end
+
+function getExplosion(image)
+  pSystem = love.graphics.newParticleSystem(image, 30)
+  pSystem:setParticleLifetime(0.5, 0.5)
+  pSystem:setLinearAcceleration(-100, -100, 100, 100)
+	pSystem:setColors(255, 255, 0, 255, 255, 153, 51, 255, 64, 64, 64, 0)
+  pSystem:setSizes(0.5, 0.5)
+  return pSystem
+end
+
+function updateExplosions(dt)
+  for i = table.getn(explosions), 1, -1 do
+    local explosion = explosions[i]
+    explosion:update(dt)
+    if explosion:getCount() == 0 then
+      table.remove(explosions, i)
+    end
   end
 end
