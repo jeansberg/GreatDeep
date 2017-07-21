@@ -116,14 +116,11 @@ function updatePlayer(dt)
   if down and player.yPos<love.graphics.getHeight()-player.height then
     player.yPos = player.yPos + dt * speed
     player.angle = 0.1
-    player.pSystem:setLinearAcceleration(-75, -15, -150, -15)
   elseif up and player.yPos>0 then
     player.yPos = player.yPos - dt * speed
     player.angle = -0.1
-    player.pSystem:setLinearAcceleration(-75, 15, -150, 15)
   else
     player.angle = 0
-    player.pSystem:setLinearAcceleration(-75, 0, -150, 0)
   end
 
   if right and player.xPos<love.graphics.getWidth()-player.width then
@@ -326,7 +323,7 @@ end
 function getBubbleTrail(image)
   pSystem = love.graphics.newParticleSystem(image, 50)
   pSystem:setParticleLifetime(1, 1)
-	pSystem:setLinearAcceleration(-75, 0, -150, 0)
+  pSystem:setSpeed(-50)
 	pSystem:setColors(255, 255, 255, 200, 255, 255, 255, 100, 255, 255, 255, 0)
   pSystem:setSizes(0.2, 0.8)
   return pSystem
