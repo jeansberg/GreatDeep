@@ -7,6 +7,13 @@ function love.load()
   groundImage = love.graphics.newImage("resources/images/ground.png")
   backgroundImage = love.graphics.newImage("resources/images/background.png")
 
+  musicTrack = love.audio.newSource("resources/audio/Mercury.wav", "static")
+  musicTrack:setLooping(true)
+  shootSfx = love.audio.newSource("resources/audio/Explosion.wav", "static")
+  shootSfx:setVolume(0.5)
+  enemyDestroySfx = love.audio.newSource("resources/audio/Shoot.wav", "static")
+  playerDestroySfx = love.audio.newSource("resources/audio/Lightening.wav", "static")
+
   torpedoTimerMax = 0.2
   torpedoStartSpeed = 100
   torpedoMaxSpeed = 300
@@ -40,6 +47,8 @@ function startGame()
 
   backgroundPosition = 0
   groundPosition = 0
+
+  musicTrack:play()
 end
 
 function love.draw()
@@ -182,6 +191,8 @@ function spawnTorpedo(x, y, speed)
 
     canFire = false
     torpedoTimer = torpedoTimerMax
+
+    playSound(shootSfx)
   end
 end
 
@@ -273,6 +284,8 @@ function checkCollisions()
       explosion:emit(20)
       table.insert(explosions, explosion)
       playerAlive = false
+      musicTrack:stop()
+      playSound(playerDestroySfx)
       break
     end
 
@@ -285,6 +298,7 @@ function checkCollisions()
         table.insert(explosions, explosion)
         table.remove(enemies, index)
         table.remove(torpedoes, index2)
+        playSound(enemyDestroySfx)
         break
       end
     end
@@ -346,4 +360,11 @@ function updateExplosions(dt)
       table.remove(explosions, i)
     end
   end
+end
+
+function playSound(sound)
+  sound:rewind(sound)
+  pitchMod = 0.8 + love.math.random(0, 10)/25
+  sound:setPitch(pitchMod)
+  sound:play()
 end
