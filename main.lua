@@ -363,7 +363,6 @@ function updateExplosions(dt)
 end
 
 function playSound(sound)
-  sound:rewind(sound)
   pitchMod = 0.8 + love.math.random(0, 10)/25
   sound:setPitch(pitchMod)
   sound:play()
